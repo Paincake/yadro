@@ -2,13 +2,14 @@ package event
 
 import (
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type Processor struct {
-	club     Club
+	Club     *Club
 	eventSrc Source
 	eventDst io.Writer
 }
@@ -23,9 +24,9 @@ func NewProcessor(eventSrc Source, eventDst io.Writer) *Processor {
 
 func (p *Processor) EndProcessing() {
 	event := ClubClosingEvent{
-		ResultWriter: nil,
+		ResultWriter: p.eventDst,
 	}
-	event.ProcessEvent(&p.club)
+	event.ProcessEvent(p.Club)
 }
 
 func (p *Processor) ProcessEvent() (bool, error) {
@@ -36,6 +37,7 @@ func (p *Processor) ProcessEvent() (bool, error) {
 
 	if eventData == "" {
 		p.EndProcessing()
+		return false, nil
 	}
 
 	eventParts := strings.Split(eventData, " ")
@@ -85,6 +87,7 @@ func (p *Processor) ProcessEvent() (bool, error) {
 			ResultWriter: p.eventDst,
 		}
 	}
-	event.ProcessEvent(&p.club)
+	event.ProcessEvent(p.Club)
+	io.WriteString(os.Stdout, "\n")
 	return true, nil
 }

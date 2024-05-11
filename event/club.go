@@ -26,7 +26,7 @@ type Club struct {
 	CloseTime      time.Time
 	queuedVisitors *list.List
 	clients        map[string]client
-	tableMap       map[int]bool
+	TableMap       map[int]bool
 }
 
 func NewClub(tables int, hourCost int, openTime time.Time, closeTime time.Time) *Club {
@@ -35,13 +35,25 @@ func NewClub(tables int, hourCost int, openTime time.Time, closeTime time.Time) 
 		tableMap[i+1] = false
 	}
 	return &Club{
-		tableMap:       make(map[int]bool),
+		tablesFree:     tables,
+		TableMap:       tableMap,
 		HourCost:       hourCost,
 		OpenTime:       openTime,
 		CloseTime:      closeTime,
 		clients:        make(map[string]client),
 		queuedVisitors: list.New(),
 	}
+}
+
+func (c *Club) GetRemainingClientsSorted() []string {
+	clientIDS := make([]string, 0)
+	for k, v := range c.clients {
+		if !v.left {
+			clientIDS = append(clientIDS, k)
+		}
+	}
+	sort.Strings(clientIDS)
+	return clientIDS
 }
 
 func (c *Club) AddClient(clientID string, arrTime time.Time) {
@@ -54,7 +66,8 @@ func (c *Club) ClientExists(clientID string) bool {
 }
 
 func (c *Club) PickTable(clientID string, table int) int {
-	if c.tableMap[table] {
+	isPicked := c.TableMap[table]
+	if isPicked {
 		return 0
 	}
 	client := c.clients[clientID]
@@ -62,6 +75,8 @@ func (c *Club) PickTable(clientID string, table int) int {
 		c.tablesFree--
 	}
 	client.table = table
+	c.TableMap[table] = true
+	c.clients[clientID] = client
 	return client.table
 }
 
@@ -70,7 +85,7 @@ func (c *Club) IsBusy() bool {
 }
 
 func (c *Club) EnqueueClient(clientID string) error {
-	if c.queuedVisitors.Len() >= len(c.tableMap) {
+	if c.queuedVisitors.Len() >= len(c.TableMap) {
 		return QueueOverflowError{}
 	}
 	c.queuedVisitors.PushBack(clientID)
@@ -78,21 +93,27 @@ func (c *Club) EnqueueClient(clientID string) error {
 }
 
 func (c *Club) DequeueClient(table int) string {
-	clientID := c.queuedVisitors.Remove(c.queuedVisitors.Front()).(string)
-	client := c.clients[clientID]
-	client.table = table
-	c.tableMap[client.table] = true
-	c.tablesFree--
+	clientID := ""
+	if c.queuedVisitors.Len() > 0 {
+		clientID = c.queuedVisitors.Remove(c.queuedVisitors.Front()).(string)
+		client := c.clients[clientID]
+		client.table = table
+		c.TableMap[client.table] = true
+		c.tablesFree--
+		c.clients[clientID] = client
+	}
 	return clientID
 }
 
 func (c *Club) RemoveClient(clientID string, leavingTime time.Time) int {
 	client := c.clients[clientID]
 	client.leaveTime = leavingTime
-	c.tableMap[client.table] = false
+	c.TableMap[client.table] = false
 	table := client.table
 	client.table = 0
 	c.tablesFree++
+	client.left = true
+	c.clients[clientID] = client
 	return table
 }
 
@@ -134,4 +155,5 @@ type client struct {
 	arrTime   time.Time
 	leaveTime time.Time
 	table     int
+	left      bool
 }

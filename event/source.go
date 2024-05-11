@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +17,15 @@ type Source interface {
 
 type ClubFileSource struct {
 	Club   *Club
-	reader bufio.Reader
+	reader *bufio.Reader
+}
+
+func NewClubFileSource(file *os.File) *ClubFileSource {
+	reader := bufio.NewReader(file)
+	fs := ClubFileSource{
+		reader: reader,
+	}
+	return &fs
 }
 
 func (s *ClubFileSource) InitSource() error {
@@ -24,7 +33,7 @@ func (s *ClubFileSource) InitSource() error {
 	if err != nil {
 		return err
 	}
-	tableData, _, _ = strings.Cut(tableData, "\n")
+	tableData, _, _ = strings.Cut(tableData, "\r\n")
 	tables, err := strconv.Atoi(tableData)
 	if err != nil {
 		return err
@@ -34,12 +43,13 @@ func (s *ClubFileSource) InitSource() error {
 	if err != nil {
 		return err
 	}
+	openClosedTime, _, _ = strings.Cut(openClosedTime, "\r\n")
 	times := strings.Split(openClosedTime, " ")
 	openTime, err := time.Parse(hhmm, times[0])
 	if err != nil {
 		return err
 	}
-	closeTime, err := time.Parse(hhmm, times[0])
+	closeTime, err := time.Parse(hhmm, times[1])
 	if err != nil {
 		return err
 	}
@@ -48,6 +58,7 @@ func (s *ClubFileSource) InitSource() error {
 	if err != nil {
 		return err
 	}
+	hourCostData, _, _ = strings.Cut(hourCostData, "\r\n")
 	hourCost, err := strconv.Atoi(hourCostData)
 	if err != nil {
 		return err
@@ -66,6 +77,6 @@ func (s *ClubFileSource) GetEventData() (string, error) {
 			return "", err
 		}
 	}
-	event, _, _ = strings.Cut(event, "\n")
+	event, _, _ = strings.Cut(event, "\r\n")
 	return event, nil
 }

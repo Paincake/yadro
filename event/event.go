@@ -22,7 +22,6 @@ func (e *ClientArrivalEvent) logEvent() {
 }
 
 func (e *ClientArrivalEvent) ProcessEvent(club *Club) {
-	defer e.logEvent()
 	if club.ClientExists(e.ClientID) {
 		//ID 13 YouShallNotPass
 		ev := ErrorEvent{
@@ -31,10 +30,11 @@ func (e *ClientArrivalEvent) ProcessEvent(club *Club) {
 			ClientID:     e.ClientID,
 			ResultWriter: e.ResultWriter,
 		}
+		e.logEvent()
 		ev.ProcessEvent(club)
 		return
 	}
-	if e.ArrTime.Sub(club.OpenTime) < 0 || e.ArrTime.Sub(club.CloseTime) > 0 {
+	if e.ArrTime.Sub(club.OpenTime) < 0 {
 		//ID 13 NotOpenYet
 		ev := ErrorEvent{
 			Error:        ClubClosedError{},
@@ -42,10 +42,12 @@ func (e *ClientArrivalEvent) ProcessEvent(club *Club) {
 			ClientID:     e.ClientID,
 			ResultWriter: e.ResultWriter,
 		}
+		e.logEvent()
 		ev.ProcessEvent(club)
 		return
 	}
 	club.AddClient(e.ClientID, e.ArrTime)
+	e.logEvent()
 }
 
 type ClientTablePickEvent struct {
@@ -60,7 +62,6 @@ func (e *ClientTablePickEvent) logEvent() {
 }
 
 func (e *ClientTablePickEvent) ProcessEvent(club *Club) {
-	defer e.logEvent()
 	if !club.ClientExists(e.ClientID) {
 		//ID 13 ClientUnknown
 		ev := ErrorEvent{
@@ -69,6 +70,7 @@ func (e *ClientTablePickEvent) ProcessEvent(club *Club) {
 			ClientID:     e.ClientID,
 			ResultWriter: e.ResultWriter,
 		}
+		e.logEvent()
 		ev.ProcessEvent(club)
 		return
 	}
@@ -81,9 +83,11 @@ func (e *ClientTablePickEvent) ProcessEvent(club *Club) {
 			ClientID:     e.ClientID,
 			ResultWriter: e.ResultWriter,
 		}
+		e.logEvent()
 		ev.ProcessEvent(club)
 		return
 	}
+	e.logEvent()
 }
 
 type ClientWaitingEvent struct {
@@ -97,7 +101,6 @@ func (e *ClientWaitingEvent) logEvent() {
 }
 
 func (e *ClientWaitingEvent) ProcessEvent(club *Club) {
-	defer e.logEvent()
 	if !club.IsBusy() {
 		//ID 13 ICanWaitNoLonger
 		ev := ErrorEvent{
@@ -106,6 +109,7 @@ func (e *ClientWaitingEvent) ProcessEvent(club *Club) {
 			ClientID:     e.ClientID,
 			ResultWriter: e.ResultWriter,
 		}
+		e.logEvent()
 		ev.ProcessEvent(club)
 		return
 	} else {
@@ -117,8 +121,11 @@ func (e *ClientWaitingEvent) ProcessEvent(club *Club) {
 				LeavingTime:  e.EventTime,
 				ResultWriter: e.ResultWriter,
 			}
+			e.logEvent()
 			ev.ProcessEvent(club)
+			return
 		}
+		e.logEvent()
 	}
 }
 
@@ -129,11 +136,10 @@ type ClientLeavingEvent struct {
 }
 
 func (e *ClientLeavingEvent) logEvent() {
-	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.LeavingTime.Format(hhmm), CLIENT_LEAVING_OUT, e.ClientID))
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.LeavingTime.Format(hhmm), CLIENT_LEAVING_IN, e.ClientID))
 }
 
 func (e *ClientLeavingEvent) ProcessEvent(club *Club) {
-	defer e.logEvent()
 	if !club.ClientExists(e.ClientID) {
 		//ID 13 ClientUnknown
 		ev := ErrorEvent{
@@ -142,6 +148,7 @@ func (e *ClientLeavingEvent) ProcessEvent(club *Club) {
 			ClientID:     e.ClientID,
 			ResultWriter: e.ResultWriter,
 		}
+		e.logEvent()
 		ev.ProcessEvent(club)
 		return
 	}
@@ -153,6 +160,7 @@ func (e *ClientLeavingEvent) ProcessEvent(club *Club) {
 		Table:        table,
 		ResultWriter: e.ResultWriter,
 	}
+	e.logEvent()
 	ev.ProcessEvent(club)
 }
 
@@ -167,8 +175,8 @@ func (e *ClientLeftEvent) logEvent() {
 }
 
 func (e *ClientLeftEvent) ProcessEvent(club *Club) {
-	defer e.logEvent()
 	club.RemoveClient(e.ClientID, e.LeavingTime)
+	e.logEvent()
 }
 
 type ClientDequeuedEvent struct {
@@ -210,8 +218,7 @@ type ClubClosingEvent struct {
 }
 
 func (e *ClubClosingEvent) ProcessEvent(club *Club) {
-	defer e.logEvent()
-	clients := club.GetClientsSorted()
+	clients := club.GetRemainingClientsSorted()
 	for _, c := range clients {
 		ev := ClientLeftEvent{
 			ClientID:     c,
@@ -221,10 +228,11 @@ func (e *ClubClosingEvent) ProcessEvent(club *Club) {
 		ev.ProcessEvent(club)
 	}
 	e.profits = club.CountProfit()
+	e.logEvent()
 }
 
 func (e *ClubClosingEvent) logEvent() {
 	for _, profit := range e.profits {
-		io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %d", profit.ClientID, profit.Profit, profit.Time))
+		io.WriteString(e.ResultWriter, fmt.Sprintf("%s %d %s\n", profit.ClientID, profit.Profit, profit.Time))
 	}
 }
