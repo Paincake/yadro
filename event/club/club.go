@@ -1,7 +1,8 @@
-package event
+package club
 
 import (
 	"container/list"
+	"github.com/Paincake/yadro/event"
 	"sort"
 	"time"
 )
@@ -15,7 +16,7 @@ const (
 	CLIENT_TABLE_USING_OUT = "12"
 	ERROR                  = "13"
 
-	hhmm = "15:04"
+	TimeFormat_hhmm = "15:04"
 )
 
 type Club struct {
@@ -100,7 +101,7 @@ func (c *Club) IsBusy() bool {
 
 func (c *Club) EnqueueClient(clientID string) error {
 	if c.queuedVisitors.Len() >= len(c.TableMap) {
-		return QueueOverflowError{}
+		return event.QueueOverflowError{}
 	}
 	c.queuedVisitors.PushBack(clientID)
 	return nil

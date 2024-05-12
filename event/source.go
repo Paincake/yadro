@@ -3,6 +3,7 @@ package event
 import (
 	"bufio"
 	"errors"
+	"github.com/Paincake/yadro/event/club"
 	"io"
 	"os"
 	"strconv"
@@ -16,7 +17,7 @@ type Source interface {
 }
 
 type ClubFileSource struct {
-	Club   *Club
+	Club   *club.Club
 	reader *bufio.Reader
 }
 
@@ -46,11 +47,11 @@ func (s *ClubFileSource) initSource() error {
 	}
 	openClosedTime, _, _ = strings.Cut(openClosedTime, "\r\n")
 	times := strings.Split(openClosedTime, " ")
-	openTime, err := time.Parse(hhmm, times[0])
+	openTime, err := time.Parse(club.TimeFormat_hhmm, times[0])
 	if err != nil {
 		return err
 	}
-	closeTime, err := time.Parse(hhmm, times[1])
+	closeTime, err := time.Parse(club.TimeFormat_hhmm, times[1])
 	if err != nil {
 		return err
 	}
@@ -65,7 +66,7 @@ func (s *ClubFileSource) initSource() error {
 		return err
 	}
 
-	s.Club = NewClub(tables, hourCost, openTime, closeTime)
+	s.Club = club.NewClub(tables, hourCost, openTime, closeTime)
 	return nil
 }
 

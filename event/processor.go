@@ -1,6 +1,7 @@
 package event
 
 import (
+	"github.com/Paincake/yadro/event/club"
 	"io"
 	"strconv"
 	"strings"
@@ -8,7 +9,7 @@ import (
 )
 
 type Processor struct {
-	Club     *Club
+	Club     *club.Club
 	eventSrc Source
 	eventDst io.Writer
 }
@@ -41,7 +42,7 @@ func (p *Processor) ProcessEvent() (bool, error) {
 
 	eventParts := strings.Split(eventData, " ")
 
-	eventTime, err := time.Parse(hhmm, eventParts[0])
+	eventTime, err := time.Parse(club.TimeFormat_hhmm, eventParts[0])
 	if err != nil {
 		return false, err
 	}
@@ -50,7 +51,7 @@ func (p *Processor) ProcessEvent() (bool, error) {
 	clientID := eventParts[2]
 	var sideParam any
 	if len(eventParts) == 4 {
-		if eventID == CLIENT_TABLE_USING_IN {
+		if eventID == club.CLIENT_TABLE_USING_IN {
 			sideParam, err = strconv.Atoi(eventParts[3])
 			if err != nil {
 				return false, err
@@ -60,26 +61,26 @@ func (p *Processor) ProcessEvent() (bool, error) {
 	}
 	var event ClubEvent
 	switch eventID {
-	case CLIENT_ARRIVING_IN:
+	case club.CLIENT_ARRIVING_IN:
 		event = &ClientArrivalEvent{
 			ClientID:     clientID,
 			ArrTime:      eventTime,
 			ResultWriter: p.eventDst,
 		}
-	case CLIENT_TABLE_USING_IN:
+	case club.CLIENT_TABLE_USING_IN:
 		event = &ClientTablePickEvent{
 			ClientID:     clientID,
 			Table:        sideParam.(int),
 			EventTime:    eventTime,
 			ResultWriter: p.eventDst,
 		}
-	case CLIENT_WAITING_IN:
+	case club.CLIENT_WAITING_IN:
 		event = &ClientWaitingEvent{
 			ClientID:     clientID,
 			EventTime:    eventTime,
 			ResultWriter: p.eventDst,
 		}
-	case CLIENT_LEAVING_IN:
+	case club.CLIENT_LEAVING_IN:
 		event = &ClientLeavingEvent{
 			ClientID:     clientID,
 			LeavingTime:  eventTime,

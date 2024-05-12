@@ -2,12 +2,13 @@ package event
 
 import (
 	"fmt"
+	"github.com/Paincake/yadro/event/club"
 	"io"
 	"time"
 )
 
 type ClubEvent interface {
-	ProcessEvent(club *Club)
+	ProcessEvent(club *club.Club)
 	logEvent()
 }
 
@@ -18,10 +19,10 @@ type ClientArrivalEvent struct {
 }
 
 func (e *ClientArrivalEvent) logEvent() {
-	defer io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.ArrTime.Format(hhmm), CLIENT_ARRIVING_IN, e.ClientID))
+	defer io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.ArrTime.Format(club.TimeFormat_hhmm), club.CLIENT_ARRIVING_IN, e.ClientID))
 }
 
-func (e *ClientArrivalEvent) ProcessEvent(club *Club) {
+func (e *ClientArrivalEvent) ProcessEvent(club *club.Club) {
 	if club.ClientExists(e.ClientID) {
 		//ID 13 YouShallNotPass
 		ev := ErrorEvent{
@@ -58,10 +59,10 @@ type ClientTablePickEvent struct {
 }
 
 func (e *ClientTablePickEvent) logEvent() {
-	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s %d\n", e.EventTime.Format(hhmm), CLIENT_TABLE_USING_IN, e.ClientID, e.Table))
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s %d\n", e.EventTime.Format(club.TimeFormat_hhmm), club.CLIENT_TABLE_USING_IN, e.ClientID, e.Table))
 }
 
-func (e *ClientTablePickEvent) ProcessEvent(club *Club) {
+func (e *ClientTablePickEvent) ProcessEvent(club *club.Club) {
 	if !club.ClientExists(e.ClientID) {
 		//ID 13 ClientUnknown
 		ev := ErrorEvent{
@@ -97,10 +98,10 @@ type ClientWaitingEvent struct {
 }
 
 func (e *ClientWaitingEvent) logEvent() {
-	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.EventTime.Format(hhmm), CLIENT_WAITING_IN, e.ClientID))
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.EventTime.Format(club.TimeFormat_hhmm), club.CLIENT_WAITING_IN, e.ClientID))
 }
 
-func (e *ClientWaitingEvent) ProcessEvent(club *Club) {
+func (e *ClientWaitingEvent) ProcessEvent(club *club.Club) {
 	if !club.IsBusy() {
 		//ID 13 ICanWaitNoLonger
 		ev := ErrorEvent{
@@ -136,10 +137,10 @@ type ClientLeavingEvent struct {
 }
 
 func (e *ClientLeavingEvent) logEvent() {
-	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.LeavingTime.Format(hhmm), CLIENT_LEAVING_IN, e.ClientID))
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.LeavingTime.Format(club.TimeFormat_hhmm), club.CLIENT_LEAVING_IN, e.ClientID))
 }
 
-func (e *ClientLeavingEvent) ProcessEvent(club *Club) {
+func (e *ClientLeavingEvent) ProcessEvent(club *club.Club) {
 	if !club.ClientExists(e.ClientID) {
 		//ID 13 ClientUnknown
 		ev := ErrorEvent{
@@ -176,10 +177,10 @@ type ClientLeftEvent struct {
 }
 
 func (e *ClientLeftEvent) logEvent() {
-	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.LeavingTime.Format(hhmm), CLIENT_LEAVING_OUT, e.ClientID))
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.LeavingTime.Format(club.TimeFormat_hhmm), club.CLIENT_LEAVING_OUT, e.ClientID))
 }
 
-func (e *ClientLeftEvent) ProcessEvent(club *Club) {
+func (e *ClientLeftEvent) ProcessEvent(club *club.Club) {
 	club.RemoveClient(e.ClientID, e.LeavingTime)
 	e.logEvent()
 }
@@ -193,11 +194,11 @@ type ClientDequeuedEvent struct {
 
 func (e *ClientDequeuedEvent) logEvent() {
 	if e.clientID != "" {
-		io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s %d\n", e.EventTime.Format(hhmm), CLIENT_TABLE_USING_OUT, e.clientID, e.Table))
+		io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s %d\n", e.EventTime.Format(club.TimeFormat_hhmm), club.CLIENT_TABLE_USING_OUT, e.clientID, e.Table))
 	}
 }
 
-func (e *ClientDequeuedEvent) ProcessEvent(club *Club) {
+func (e *ClientDequeuedEvent) ProcessEvent(club *club.Club) {
 	defer e.logEvent()
 	e.clientID = club.DequeueClient(e.Table, e.EventTime)
 }
@@ -210,19 +211,19 @@ type ErrorEvent struct {
 }
 
 func (e *ErrorEvent) logEvent() {
-	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.EventTime.Format(hhmm), ERROR, e.Error.Error()))
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s %s %s\n", e.EventTime.Format(club.TimeFormat_hhmm), club.ERROR, e.Error.Error()))
 }
 
-func (e *ErrorEvent) ProcessEvent(club *Club) {
+func (e *ErrorEvent) ProcessEvent(club *club.Club) {
 	e.logEvent()
 }
 
 type ClubClosingEvent struct {
-	profits      []TableProfit
+	profits      []club.TableProfit
 	ResultWriter io.Writer
 }
 
-func (e *ClubClosingEvent) ProcessEvent(club *Club) {
+func (e *ClubClosingEvent) ProcessEvent(club *club.Club) {
 	clients := club.GetRemainingClientsSorted()
 	for _, c := range clients {
 		ev := ClientLeftEvent{
