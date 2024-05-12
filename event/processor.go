@@ -2,7 +2,6 @@ package event
 
 import (
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -88,6 +87,5 @@ func (p *Processor) ProcessEvent() (bool, error) {
 		}
 	}
 	event.ProcessEvent(p.Club)
-	io.WriteString(os.Stdout, "\n")
 	return true, nil
 }

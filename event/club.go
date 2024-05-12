@@ -58,12 +58,15 @@ func (c *Club) GetRemainingClientsSorted() []string {
 }
 
 func (c *Club) AddClient(clientID string, arrTime time.Time) {
-	c.clients[clientID] = client{clientID: clientID, arrTime: arrTime}
+	c.clients[clientID] = client{clientID: clientID, arrTime: arrTime, left: false}
 }
 
 func (c *Club) ClientExists(clientID string) bool {
-	_, ok := c.clients[clientID]
-	return ok
+	client, ok := c.clients[clientID]
+	if !ok {
+		return false
+	}
+	return !client.left
 }
 
 func (c *Club) PickTable(clientID string, tableNum int, pickTime time.Time) int {
@@ -121,7 +124,6 @@ func (c *Club) DequeueClient(tableNum int, eventTime time.Time) string {
 	return clientID
 }
 
-// TODO rework; remove from queue also
 func (c *Club) RemoveClient(clientID string, leavingTime time.Time) int {
 	client := c.clients[clientID]
 	client.leaveTime = leavingTime
@@ -132,6 +134,18 @@ func (c *Club) RemoveClient(clientID string, leavingTime time.Time) int {
 		pickedTable.minutesInUse += int(leavingTime.Sub(pickedTable.pickTime).Minutes())
 		c.TableMap[client.table] = pickedTable
 		c.tablesFree++
+	}
+
+	var queueElem *list.Element
+	for e := c.queuedVisitors.Front(); e != nil; e = e.Next() {
+		v := e.Value.(string)
+		if v == clientID {
+			queueElem = e
+			break
+		}
+	}
+	if queueElem != nil {
+		c.queuedVisitors.Remove(queueElem)
 	}
 
 	table := client.table
@@ -149,12 +163,14 @@ func (c *Club) GetClientsSorted() []string {
 	return clients
 }
 
-// TODO rework
 func (c *Club) CountProfit() []TableProfit {
 	profitInfo := make([]TableProfit, 0, len(c.TableMap))
 	for i := 1; i <= len(c.TableMap); i++ {
 		table := c.TableMap[i]
-		profit := c.HourCost * (table.minutesInUse/60 + 1)
+		var profit int
+		if table.minutesInUse != 0 {
+			profit = c.HourCost * (table.minutesInUse/60 + 1)
+		}
 		profitInfo = append(profitInfo, TableProfit{
 			TableNum:     i,
 			Profit:       profit,

@@ -152,16 +152,21 @@ func (e *ClientLeavingEvent) ProcessEvent(club *Club) {
 		ev.ProcessEvent(club)
 		return
 	}
+
 	table := club.RemoveClient(e.ClientID, e.LeavingTime)
 
 	//ID 12 event
-	ev := ClientDequeuedEvent{
-		EventTime:    e.LeavingTime,
-		Table:        table,
-		ResultWriter: e.ResultWriter,
+	if table != 0 {
+		ev := ClientDequeuedEvent{
+			EventTime:    e.LeavingTime,
+			Table:        table,
+			ResultWriter: e.ResultWriter,
+		}
+		e.logEvent()
+		ev.ProcessEvent(club)
+		return
 	}
 	e.logEvent()
-	ev.ProcessEvent(club)
 }
 
 type ClientLeftEvent struct {

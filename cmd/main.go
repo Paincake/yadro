@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+//TODO add cli
+
 func main() {
 	f, _ := os.Open("C:\\Users\\ryazh\\GolandProjects\\yadro\\test")
 	src, err := event.NewClubFileSource(f)
