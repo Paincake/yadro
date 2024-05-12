@@ -11,7 +11,7 @@ import (
 )
 
 type Source interface {
-	InitSource() error
+	initSource() error
 	GetEventData() (string, error)
 }
 
@@ -20,15 +20,16 @@ type ClubFileSource struct {
 	reader *bufio.Reader
 }
 
-func NewClubFileSource(file *os.File) *ClubFileSource {
+func NewClubFileSource(file *os.File) (*ClubFileSource, error) {
 	reader := bufio.NewReader(file)
 	fs := ClubFileSource{
 		reader: reader,
 	}
-	return &fs
+	err := fs.initSource()
+	return &fs, err
 }
 
-func (s *ClubFileSource) InitSource() error {
+func (s *ClubFileSource) initSource() error {
 	tableData, err := s.reader.ReadString('\n')
 	if err != nil {
 		return err

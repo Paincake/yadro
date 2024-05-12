@@ -2,7 +2,6 @@ package event
 
 import (
 	"container/list"
-	"fmt"
 	"sort"
 	"time"
 )
@@ -26,13 +25,15 @@ type Club struct {
 	CloseTime      time.Time
 	queuedVisitors *list.List
 	clients        map[string]client
-	TableMap       map[int]bool
+	TableMap       map[int]table
 }
 
 func NewClub(tables int, hourCost int, openTime time.Time, closeTime time.Time) *Club {
-	tableMap := make(map[int]bool)
+	tableMap := make(map[int]table)
 	for i := 0; i < tables; i++ {
-		tableMap[i+1] = false
+		tableMap[i+1] = table{
+			isInUse: false,
+		}
 	}
 	return &Club{
 		tablesFree:     tables,
@@ -65,19 +66,29 @@ func (c *Club) ClientExists(clientID string) bool {
 	return ok
 }
 
-func (c *Club) PickTable(clientID string, table int) int {
-	isPicked := c.TableMap[table]
-	if isPicked {
+func (c *Club) PickTable(clientID string, tableNum int, pickTime time.Time) int {
+	tableToPick := c.TableMap[tableNum]
+	if tableToPick.isInUse {
 		return 0
 	}
 	client := c.clients[clientID]
 	if client.table == 0 {
 		c.tablesFree--
 	}
-	client.table = table
-	c.TableMap[table] = true
+	client.table = tableNum
+
+	tableToPick.isInUse = true
+	tableToPick.pickTime = pickTime
+
+	c.TableMap[tableNum] = tableToPick
 	c.clients[clientID] = client
 	return client.table
+}
+
+type table struct {
+	isInUse      bool
+	pickTime     time.Time
+	minutesInUse int
 }
 
 func (c *Club) IsBusy() bool {
@@ -92,26 +103,38 @@ func (c *Club) EnqueueClient(clientID string) error {
 	return nil
 }
 
-func (c *Club) DequeueClient(table int) string {
+func (c *Club) DequeueClient(tableNum int, eventTime time.Time) string {
 	clientID := ""
 	if c.queuedVisitors.Len() > 0 {
 		clientID = c.queuedVisitors.Remove(c.queuedVisitors.Front()).(string)
 		client := c.clients[clientID]
-		client.table = table
-		c.TableMap[client.table] = true
+		client.table = tableNum
+
+		pickedTable := c.TableMap[tableNum]
+		pickedTable.isInUse = true
+		pickedTable.pickTime = eventTime
+		c.TableMap[tableNum] = pickedTable
+
 		c.tablesFree--
 		c.clients[clientID] = client
 	}
 	return clientID
 }
 
+// TODO rework; remove from queue also
 func (c *Club) RemoveClient(clientID string, leavingTime time.Time) int {
 	client := c.clients[clientID]
 	client.leaveTime = leavingTime
-	c.TableMap[client.table] = false
+
+	pickedTable, ok := c.TableMap[client.table]
+	if ok {
+		pickedTable.isInUse = false
+		pickedTable.minutesInUse += int(leavingTime.Sub(pickedTable.pickTime).Minutes())
+		c.TableMap[client.table] = pickedTable
+		c.tablesFree++
+	}
+
 	table := client.table
-	client.table = 0
-	c.tablesFree++
 	client.left = true
 	c.clients[clientID] = client
 	return table
@@ -126,28 +149,25 @@ func (c *Club) GetClientsSorted() []string {
 	return clients
 }
 
-func (c *Club) CountProfit() []ClientProfit {
-	clientIDS := c.GetClientsSorted()
-	profits := make([]ClientProfit, 0, len(clientIDS))
-	for _, id := range clientIDS {
-		client := c.clients[id]
-		spentTime := client.leaveTime.Sub(client.arrTime)
-		hours := int(spentTime.Hours())
-		minutes := int(spentTime.Minutes())
-		profit := c.HourCost * hours
-		profits = append(profits, ClientProfit{
-			ClientID: id,
-			Time:     fmt.Sprintf("%d:%d", hours, minutes),
-			Profit:   profit,
+// TODO rework
+func (c *Club) CountProfit() []TableProfit {
+	profitInfo := make([]TableProfit, 0, len(c.TableMap))
+	for i := 1; i <= len(c.TableMap); i++ {
+		table := c.TableMap[i]
+		profit := c.HourCost * (table.minutesInUse/60 + 1)
+		profitInfo = append(profitInfo, TableProfit{
+			TableNum:     i,
+			Profit:       profit,
+			MinutesInUse: table.minutesInUse,
 		})
 	}
-	return profits
+	return profitInfo
 }
 
-type ClientProfit struct {
-	ClientID string
-	Time     string
-	Profit   int
+type TableProfit struct {
+	TableNum     int
+	Profit       int
+	MinutesInUse int
 }
 
 type client struct {

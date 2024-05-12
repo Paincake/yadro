@@ -74,7 +74,7 @@ func (e *ClientTablePickEvent) ProcessEvent(club *Club) {
 		ev.ProcessEvent(club)
 		return
 	}
-	table := club.PickTable(e.ClientID, e.Table)
+	table := club.PickTable(e.ClientID, e.Table, e.EventTime)
 	if table == 0 {
 		//ID 13 PlaceIsBusy
 		ev := ErrorEvent{
@@ -194,7 +194,7 @@ func (e *ClientDequeuedEvent) logEvent() {
 
 func (e *ClientDequeuedEvent) ProcessEvent(club *Club) {
 	defer e.logEvent()
-	e.clientID = club.DequeueClient(e.Table)
+	e.clientID = club.DequeueClient(e.Table, e.EventTime)
 }
 
 type ErrorEvent struct {
@@ -213,7 +213,7 @@ func (e *ErrorEvent) ProcessEvent(club *Club) {
 }
 
 type ClubClosingEvent struct {
-	profits      []ClientProfit
+	profits      []TableProfit
 	ResultWriter io.Writer
 }
 
@@ -233,6 +233,9 @@ func (e *ClubClosingEvent) ProcessEvent(club *Club) {
 
 func (e *ClubClosingEvent) logEvent() {
 	for _, profit := range e.profits {
-		io.WriteString(e.ResultWriter, fmt.Sprintf("%s %d %s\n", profit.ClientID, profit.Profit, profit.Time))
+		hours := profit.MinutesInUse / 60
+		minutes := profit.MinutesInUse % 60
+		timeInUse := fmt.Sprintf("%.2d:%.2d", hours, minutes)
+		io.WriteString(e.ResultWriter, fmt.Sprintf("%d %d %s\n", profit.TableNum, profit.Profit, timeInUse))
 	}
 }

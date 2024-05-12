@@ -7,14 +7,12 @@ import (
 
 func main() {
 	f, _ := os.Open("C:\\Users\\ryazh\\GolandProjects\\yadro\\test")
-	src := event.NewClubFileSource(f)
-	err := src.InitSource()
+	src, err := event.NewClubFileSource(f)
 	if err != nil {
 		panic(err)
 	}
 
 	processor := event.NewProcessor(src, os.Stdout)
-
 	//TODO
 	processor.Club = src.Club
 
