@@ -29,9 +29,3 @@ type WaitingError struct{}
 func (e WaitingError) Error() string {
 	return "ICanWaitNoLonger"
 }
-
-type QueueOverflowError struct{}
-
-func (e QueueOverflowError) Error() string {
-	return "Queue overflow"
-}

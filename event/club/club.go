@@ -2,7 +2,7 @@ package club
 
 import (
 	"container/list"
-	"github.com/Paincake/yadro/event"
+	"errors"
 	"sort"
 	"time"
 )
@@ -101,7 +101,7 @@ func (c *Club) IsBusy() bool {
 
 func (c *Club) EnqueueClient(clientID string) error {
 	if c.queuedVisitors.Len() >= len(c.TableMap) {
-		return event.QueueOverflowError{}
+		return errors.New("queue overflow")
 	}
 	c.queuedVisitors.PushBack(clientID)
 	return nil

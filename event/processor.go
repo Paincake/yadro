@@ -14,29 +14,53 @@ type Processor struct {
 	eventDst io.Writer
 }
 
-func NewProcessor(eventSrc Source, eventDst io.Writer) *Processor {
+func NewProcessor(eventSrc Source, eventDst io.Writer, club *club.Club) *Processor {
 	p := &Processor{
+		Club:     club,
 		eventSrc: eventSrc,
 		eventDst: eventDst,
 	}
 	return p
 }
 
-func (p *Processor) EndProcessing() {
+func (p *Processor) endProcessing() {
 	event := ClubClosingEvent{
+		closeTime:    p.Club.CloseTime,
 		ResultWriter: p.eventDst,
 	}
 	event.ProcessEvent(p.Club)
 }
 
-func (p *Processor) ProcessEvent() (bool, error) {
+func (p *Processor) startProcessing() {
+	event := ClubOpeningEvent{
+		openTime:     p.Club.OpenTime,
+		ResultWriter: p.eventDst,
+	}
+	event.ProcessEvent(p.Club)
+}
+
+func (p *Processor) ProcessEvents() error {
+	p.startProcessing()
+	for {
+		processed, err := p.processEvent()
+		if err != nil {
+			return err
+		}
+		if !processed {
+			break
+		}
+	}
+	return nil
+}
+
+func (p *Processor) processEvent() (bool, error) {
 	eventData, err := p.eventSrc.GetEventData()
 	if err != nil {
 		return false, err
 	}
 
 	if eventData == "" {
-		p.EndProcessing()
+		p.endProcessing()
 		return false, nil
 	}
 

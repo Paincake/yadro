@@ -102,6 +102,18 @@ func (e *ClientWaitingEvent) logEvent() {
 }
 
 func (e *ClientWaitingEvent) ProcessEvent(club *club.Club) {
+	if !club.ClientExists(e.ClientID) {
+		//ID 13 ClientUnknown
+		ev := ErrorEvent{
+			Error:        ClientNotPresentError{},
+			EventTime:    e.EventTime,
+			ClientID:     e.ClientID,
+			ResultWriter: e.ResultWriter,
+		}
+		e.logEvent()
+		ev.ProcessEvent(club)
+		return
+	}
 	if !club.IsBusy() {
 		//ID 13 ICanWaitNoLonger
 		ev := ErrorEvent{
@@ -219,6 +231,7 @@ func (e *ErrorEvent) ProcessEvent(club *club.Club) {
 }
 
 type ClubClosingEvent struct {
+	closeTime    time.Time
 	profits      []club.TableProfit
 	ResultWriter io.Writer
 }
@@ -238,10 +251,24 @@ func (e *ClubClosingEvent) ProcessEvent(club *club.Club) {
 }
 
 func (e *ClubClosingEvent) logEvent() {
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s\n", e.closeTime.Format(club.TimeFormat_hhmm)))
 	for _, profit := range e.profits {
 		hours := profit.MinutesInUse / 60
 		minutes := profit.MinutesInUse % 60
 		timeInUse := fmt.Sprintf("%.2d:%.2d", hours, minutes)
 		io.WriteString(e.ResultWriter, fmt.Sprintf("%d %d %s\n", profit.TableNum, profit.Profit, timeInUse))
 	}
+}
+
+type ClubOpeningEvent struct {
+	ResultWriter io.Writer
+	openTime     time.Time
+}
+
+func (e *ClubOpeningEvent) ProcessEvent(c *club.Club) {
+	e.logEvent()
+}
+
+func (e *ClubOpeningEvent) logEvent() {
+	io.WriteString(e.ResultWriter, fmt.Sprintf("%s\n", e.openTime.Format(club.TimeFormat_hhmm)))
 }

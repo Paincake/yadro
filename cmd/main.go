@@ -3,13 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/Paincake/yadro/event"
+	"io"
 	"os"
 )
-
-//TODO testing
-//TODO restructure
-//TODO start and end processing printing
-//TODO better processing loop
 
 func main() {
 	if len(os.Args) < 2 {
@@ -17,23 +13,15 @@ func main() {
 		return
 	}
 	filename := os.Args[1]
-	f, _ := os.Open(filename)
-	src, err := event.NewClubFileSource(f)
+	file, err := os.Open(filename)
+	src, err := event.NewClubFileSource(file)
 	if err != nil {
 		panic(err)
 	}
-
-	processor := event.NewProcessor(src, os.Stdout)
-	//TODO this is so bad
-	processor.Club = src.Club
-
-	for {
-		processed, err := processor.ProcessEvent()
-		if err != nil {
-			panic(err)
-		}
-		if !processed {
-			break
-		}
+	processor := event.NewProcessor(src, os.Stdout, src.Club)
+	err = processor.ProcessEvents()
+	if err != nil {
+		io.WriteString(os.Stderr, err.Error())
 	}
+
 }
